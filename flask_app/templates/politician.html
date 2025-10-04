@@ -1,24 +1,249 @@
 {% extends "base.html" %}
 
 {% block title %}
-    {{ data.name }}
+    {{ politician.candidate_name }}
 {% endblock %}
 
 {% block content %}
-    <h1>{{ data.name }}</h1>
-    <h3>{{ data }}</h3>
-    <p>{{ data.title }}</p>
-    <p>{{ data.party }}</p>
-    <p>{{ data.state }}</p>
-    <p>{{ data.district }}</p>
-    <p>{{ data.small_individual_contributions }}</p>
-    <p>{{ data.small_individual_contributions_percentage }}</p>
-    <p>{{ data.large_individual_contributions }}</p>
-    <p>{{ data.large_individual_contributions_percentage }}</p>
-    <p>{{ data.other }}</p>
-    <p>{{ data.other_percentage }}</p>
-    <p>{{ data.pac_contributions }}</p>
-    <p>{{ data.pac_contributions_percentage }}</p>
-    <p>{{ data.candidate_self_financing }}</p>
-    <p>{{ data.candidate_self_financing_percentage }}</p>
+<div class="container mt-4">
+    {% if politician %}
+        <!-- Header Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h1 class="card-title mb-2">{{ politician.candidate_name }}</h1>
+                                <div class="mb-3">
+                                    <span class="badge 
+                                        {% if politician.chamber == 'House' %}bg-primary{% else %}bg-success{% endif %} 
+                                        me-2 fs-6">
+                                        {{ politician.chamber }}
+                                    </span>
+                                    
+                                    <span class="badge 
+                                        {% if politician.political_party_affiliation == 'DEM' %}bg-blue
+                                        {% elif politician.political_party_affiliation == 'REP' %}bg-danger
+                                        {% elif politician.political_party_affiliation == 'IND' %}bg-warning
+                                        {% else %}bg-secondary{% endif %} fs-6">
+                                        {{ politician.political_party_affiliation }}
+                                    </span>
+                                </div>
+                                
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-geo-alt"></i> 
+                                    {{ politician.office_state }}
+                                    {% if politician.office_district and politician.office_district != '0.0' %}
+                                        - District {{ politician.office_district }}
+                                    {% endif %}
+                                </p>
+                                
+                                {% if politician.incumbent_challenger_indicator %}
+                                <p class="text-muted mb-0">
+                                    <i class="bi bi-person-badge"></i> 
+                                    {{ politician.incumbent_challenger_indicator }}
+                                </p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4 text-md-end">
+                                <div class="text-muted">
+                                    <small>Candidate ID: {{ politician.candidate_id }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Overview -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h3 class="mb-3"><i class="bi bi-currency-dollar"></i> Financial Overview</h3>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Receipts</h5>
+                        <h3>${{ "{:,.0f}".format(politician.total_receipts) }}</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Individual Contributions</h5>
+                        <h3>${{ "{:,.0f}".format(politician.total_individual_contributions) }}</h3>
+                        <small>{{ politician.percent_individual_contributions }}% of total</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-dark">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">PAC Contributions</h5>
+                        <h3>${{ "{:,.0f}".format(politician.adjusted_pac_contributions) }}</h3>
+                        <small>{{ politician.pac_contribution_percentage }}% of total</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Party Contributions</h5>
+                        <h3>${{ "{:,.0f}".format(politician.adjusted_party_contributions) }}</h3>
+                        <small>{{ politician.party_contribution_percentage }}% of total</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Financial Information -->
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Contribution Breakdown</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Individual Contributions</span>
+                                <span>${{ "{:,.0f}".format(politician.total_individual_contributions) }}</span>
+                            </div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-success" style="width: {{ politician.percent_individual_contributions }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ politician.percent_individual_contributions }}%</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>PAC Contributions</span>
+                                <span>${{ "{:,.0f}".format(politician.adjusted_pac_contributions) }}</span>
+                            </div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-warning" style="width: {{ politician.pac_contribution_percentage }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ politician.pac_contribution_percentage }}%</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Party Contributions</span>
+                                <span>${{ "{:,.0f}".format(politician.adjusted_party_contributions) }}</span>
+                            </div>
+                            <div class="progress mb-2">
+                                <div class="progress-bar bg-info" style="width: {{ politician.party_contribution_percentage }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ politician.party_contribution_percentage }}%</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between">
+                                <span>Other Committee Contributions</span>
+                                <span>${{ "{:,.0f}".format(politician.other_political_committee_contributions) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle"></i> Additional Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Funding Group:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ politician.funding_group }}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Individual Percentile:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ politician.individual_percentile_all }}%
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Individual Percentile Bin:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ politician.individual_percentile_bin }}
+                            </div>
+                        </div>
+                        
+                        {% if politician.debts_owed_by > 0 %}
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Debts Owed:</strong>
+                            </div>
+                            <div class="col-6 text-danger">
+                                ${{ "{:,.0f}".format(politician.debts_owed_by) }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Coverage End Date:</strong>
+                            </div>
+                            <div class="col-6">
+                                {{ politician.coverage_end_date }}
+                            </div>
+                        </div>
+                        
+                        {% if politician.individual_refunds > 0 or politician.committee_refunds > 0 %}
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <strong>Refunds:</strong>
+                            </div>
+                            <div class="col-6">
+                                Individual: ${{ "{:,.0f}".format(politician.individual_refunds) }}<br>
+                                Committee: ${{ "{:,.0f}".format(politician.committee_refunds) }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Back Button -->
+        <div class="row">
+            <div class="col-12">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Search
+                </a>
+            </div>
+        </div>
+        
+    {% else %}
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Politician Not Found</h4>
+            <p>The politician you're looking for could not be found.</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Search</a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.bg-blue {
+    background-color: #0d6efd !important;
+}
+</style>
 {% endblock %}

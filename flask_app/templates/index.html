@@ -1,12 +1,238 @@
 {% extends "base.html" %}
 
 {% block title %}
-    Home
+    Political Tracker - Home
 {% endblock %}
 
-{% block content %}
-    <h1>Hello World</h1>
 
-    <a href="/politician/N00041162">Alexandria Ocasio-Cortez</a>
-    <a href="/politician/N00009585">Adam Schiff</a>
+<!-- TODO: Remove "Quck access" links that don't work, change search suggestions -->
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-primary text-white py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <h1 class="display-4 fw-bold mb-4">
+                    Track Political Contributions
+                </h1>
+                <p class="lead mb-4">
+                    Discover detailed financial information about House and Senate candidates. 
+                    Explore contribution patterns, funding sources, and transparency data for politicians across the United States.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <span class="badge bg-light text-primary fs-6">
+                        <i class="bi bi-people-fill me-1"></i>3,000+ Candidates
+                    </span>
+                    <span class="badge bg-light text-primary fs-6">
+                        <i class="bi bi-house me-1"></i>House & Senate
+                    </span>
+                    <span class="badge bg-light text-primary fs-6">
+                        <i class="bi bi-shield-check me-1"></i>Transparent Data
+                    </span>
+                </div>
+            </div>
+            <div class="col-lg-6 text-center">
+                <div class="card shadow-lg">
+                    <div class="card-body p-4">
+                        <h3 class="card-title mb-4">
+                            <i class="bi bi-search text-primary"></i> Search Politicians
+                        </h3>
+                        <form action="{{ url_for('search') }}" method="POST">
+                            <div class="input-group input-group-lg mb-3">
+                                <input type="text" class="form-control" name="search" 
+                                       placeholder="Enter politician name..." required>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="bi bi-search"></i> Search
+                                </button>
+                            </div>
+                            <small class="text-muted">
+                                Try searching for "Biden", "Trump", "Schiff", or any politician's name
+                            </small>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-12">
+                <h2 class="fw-bold mb-3">Explore Political Finance Data</h2>
+                <p class="text-muted lead">Get insights into how political campaigns are funded</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 60px; height: 60px;">
+                            <i class="bi bi-graph-up text-primary fs-3"></i>
+                        </div>
+                        <h5 class="card-title">Financial Analytics</h5>
+                        <p class="card-text text-muted">
+                            View detailed breakdowns of campaign contributions, PAC funding, and individual donations with interactive charts.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 60px; height: 60px;">
+                            <i class="bi bi-search text-success fs-3"></i>
+                        </div>
+                        <h5 class="card-title">Smart Search</h5>
+                        <p class="card-text text-muted">
+                            Find politicians using fuzzy matching technology. Search by name, party, state, or district with intelligent suggestions.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="bg-info bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                             style="width: 60px; height: 60px;">
+                            <i class="bi bi-shield-check text-info fs-3"></i>
+                        </div>
+                        <h5 class="card-title">Transparency</h5>
+                        <p class="card-text text-muted">
+                            Access comprehensive campaign finance data from official sources, promoting transparency in political funding.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Access Section -->
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-4">
+                <h3 class="fw-bold">Quick Access</h3>
+                <p class="text-muted">Explore some well-known politicians</p>
+            </div>
+        </div>
+        
+        <div class="row g-3 justify-content-center">
+            <div class="col-md-3 col-sm-6">
+                <a href="/politician/N00041162" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm hover-lift">
+                        <div class="card-body text-center p-3">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" 
+                                 style="width: 50px; height: 50px;">
+                                <i class="bi bi-person-fill text-primary"></i>
+                            </div>
+                            <h6 class="card-title mb-1">Alexandria Ocasio-Cortez</h6>
+                            <small class="text-muted">House - NY-14</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <a href="/politician/N00009585" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm hover-lift">
+                        <div class="card-body text-center p-3">
+                            <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" 
+                                 style="width: 50px; height: 50px;">
+                                <i class="bi bi-person-fill text-primary"></i>
+                            </div>
+                            <h6 class="card-title mb-1">Adam Schiff</h6>
+                            <small class="text-muted">House - CA-30</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <a href="/politician/N00000286" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm hover-lift">
+                        <div class="card-body text-center p-3">
+                            <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" 
+                                 style="width: 50px; height: 50px;">
+                                <i class="bi bi-person-fill text-success"></i>
+                            </div>
+                            <h6 class="card-title mb-1">Nancy Pelosi</h6>
+                            <small class="text-muted">House - CA-11</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <div class="col-md-3 col-sm-6">
+                <a href="/politician/N00000335" class="text-decoration-none">
+                    <div class="card h-100 border-0 shadow-sm hover-lift">
+                        <div class="card-body text-center p-3">
+                            <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-2" 
+                                 style="width: 50px; height: 50px;">
+                                <i class="bi bi-person-fill text-success"></i>
+                            </div>
+                            <h6 class="card-title mb-1">Mitch McConnell</h6>
+                            <small class="text-muted">Senate - KY</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="py-5">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="h-100">
+                    <h3 class="text-primary fw-bold">3,000+</h3>
+                    <p class="text-muted mb-0">Total Candidates</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="h-100">
+                    <h3 class="text-success fw-bold">435</h3>
+                    <p class="text-muted mb-0">House Districts</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="h-100">
+                    <h3 class="text-info fw-bold">100</h3>
+                    <p class="text-muted mb-0">Senate Seats</p>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="h-100">
+                    <h3 class="text-warning fw-bold">50</h3>
+                    <p class="text-muted mb-0">States & Territories</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.hover-lift {
+    transition: transform 0.2s ease-in-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
+
+.bg-primary {
+    background-color: #0d6efd !important;
+}
+</style>
 {% endblock %}

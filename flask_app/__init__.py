@@ -4,6 +4,8 @@ Sets up the Flask app, configuration, template filters, and imports all route mo
 """
 
 from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 
 from dotenv import load_dotenv
 import os
@@ -20,6 +22,22 @@ app.secret_key = SECRET_KEY
 # Development settings to prevent browser caching and enable auto-reload
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+
+
+class Base(DeclarativeBase):
+    pass
+
+db = SQLAlchemy(model_class=Base)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
+
+db.init_app(app)
+
+from .models import *
+
+with app.app_context():
+    db.create_all()
+
 
 
 # Import database setup

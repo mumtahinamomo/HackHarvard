@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Search Results
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="bi bi-search"></i> Search Results for "{{ search_term }}"
+            </h1>
+            
+            {% if search_results %}
+                <div class="alert alert-info">
+                    Found {{ search_results|length }} politician{{ 's' if search_results|length != 1 else '' }} matching your search.
+                </div>
+                
+                <div class="row">
+                    {% for result in search_results %}
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <a href="{{ url_for('politician', politician_id = result.candidate_id) }}" 
+                                       class="text-decoration-none">
+                                        {{ result.formatted_name }}
+                                    </a>
+                                </h5>
+                                
+                                <p class="card-text text-muted small mb-2">
+                                    {{ result.candidate_name }}
+                                </p>
+                                
+                                <div class="mb-3">
+                                    <span class="badge 
+                                        {% if result.chamber == 'House' %}bg-primary{% else %}bg-success{% endif %} 
+                                        me-2">
+                                        {{ result.chamber }}
+                                    </span>
+                                    
+                                    <span class="badge 
+                                        {% if result.political_party_affiliation == 'DEM' %}bg-blue
+                                        {% elif result.political_party_affiliation == 'REP' %}bg-danger
+                                        {% elif result.political_party_affiliation == 'IND' %}bg-warning
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ result.political_party_affiliation }}
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i> 
+                                        {{ result.office_state }}
+                                        {% if result.office_district and result.office_district != '0.0' %}
+                                            - District {{ result.office_district }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        Match Score: {{ result.score }}%
+                                    </small>
+                                    <a href="{{ url_for('politician', politician_id = result.candidate_id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+            {% else %}
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">No Results Found</h4>
+                    <p>We couldn't find any politicians matching "{{ search_term }}". Try:</p>
+                    <ul class="mb-0">
+                        <li>Checking your spelling</li>
+                        <li>Using a different name format</li>
+                        <li>Searching with just the last name</li>
+                    </ul>
+                </div>
+            {% endif %}
+            
+            <div class="mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Search
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-blue {
+    background-color: #0d6efd !important;
+}
+</style>
+{% endblock %}
