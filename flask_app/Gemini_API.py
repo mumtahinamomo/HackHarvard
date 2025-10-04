@@ -1,5 +1,11 @@
 import google.generativeai as genai
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # Create a datetime object for today
 today = datetime.today()
@@ -9,7 +15,7 @@ today_str = today.strftime("%Y-%m-%d %H:%M:%S")
 print(today_str)
 
 
-genai.configure(api_key="AIzaSyDZDu9b40T4vtHOssHYz5r01_YWELMk3kI")
+genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel("models/gemini-pro-latest")
 
 def describe_politician(name):
