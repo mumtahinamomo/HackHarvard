@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {{ data.name }}
+{% endblock %}
+
+{% block content %}
+    <h1>{{ data.name }}</h1>
+    <h3>{{ data }}</h3>
+    <p>{{ data.title }}</p>
+    <p>{{ data.party }}</p>
+    <p>{{ data.state }}</p>
+    <p>{{ data.district }}</p>
+    <p>{{ data.small_individual_contributions }}</p>
+    <p>{{ data.small_individual_contributions_percentage }}</p>
+    <p>{{ data.large_individual_contributions }}</p>
+    <p>{{ data.large_individual_contributions_percentage }}</p>
+    <p>{{ data.other }}</p>
+    <p>{{ data.other_percentage }}</p>
+    <p>{{ data.pac_contributions }}</p>
+    <p>{{ data.pac_contributions_percentage }}</p>
+    <p>{{ data.candidate_self_financing }}</p>
+    <p>{{ data.candidate_self_financing_percentage }}</p>
+{% endblock %}
