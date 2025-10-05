@@ -224,3 +224,14 @@ def clear_description_cache():
             'success': False, 
             'error': str(e)
         }), 500
+
+@app.route('/graph')
+def graph_viewer():
+    """Graph viewer page without specific politician."""
+    return render_template('graph_viewer.html')
+
+@app.route('/graph/<string:politician_id>')
+def graph_viewer_politician(politician_id):
+    """Graph viewer page for specific politician."""
+    politician = Politician.query.filter_by(candidate_id=politician_id).first()
+    return render_template('graph_viewer.html', politician=politician)
