@@ -1,0 +1,361 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OpenBallot — Explore</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: dark; }
+    *{ box-sizing:border-box }
+    body{ margin:0; background:#0a0c12; color:#eaf0ff; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto }
+    header{ height:64px; padding:10px 14px; display:flex; gap:10px; align-items:center; border-bottom:1px solid #162236; background:#0b1018; position:sticky; top:0; z-index:5 }
+    .badge{ background:#1d2a43; padding:4px 8px; border-radius:999px; font-size:12px; color:#9db1ff }
+    input[type="text"]{ background:#0d1220; border:1px solid #25344f; color:#dfe7ff; padding:8px 10px; border-radius:10px; width:280px }
+    .btn{ background:#162236; border:1px solid #2b4270; color:#dfe7ff; border-radius:10px; padding:8px 10px; cursor:pointer; text-decoration:none }
+    .btn.primary{ background:#243a67; border-color:#3d5a9f }
+    .toolbar{ display:flex; gap:10px; align-items:center; margin-left:auto }
+    #graph{ width:100vw; height:calc(100vh - 64px); display:block }
+    /* HUD card */
+    #hud{ position:absolute; top:84px; right:14px; width:290px; background:#0e1422; border:1px solid #1e2b46; border-radius:14px; padding:10px; display:none; box-shadow:0 10px 30px rgba(0,0,0,.35) }
+    #hud h4{ margin:0 0 6px; font-size:14px; color:#b9c7ff }
+    #hud .row{ display:flex; justify-content:space-between; margin:4px 0; font-size:13px; color:#cbd5e1 }
+    #hud .pill{ margin-top:6px; background:#132037; border:1px solid #27406f; color:#e6edff; border-radius:999px; padding:4px 8px; display:inline-block }
+    /* Pretty SVG effects */
+    .vignette{ pointer-events:none }
+    .labelText, .edgeLabel{ fill:#ffffff; font-size:14px; paint-order:stroke; stroke:#0a0c12; stroke-width:4 }
+    .cornerLabel{ fill:#93a9ff; font-size:12px; opacity:.9; pointer-events:none }
+    .soft{ filter:url(#softGlow) }
+    .pulse{ animation:pulse 1.8s ease-in-out infinite }
+    @keyframes pulse{ 0%{ r:34; opacity:.9 } 50%{ r:38; opacity:.5 } 100%{ r:34; opacity:.9 } }
+    .hoverLabel{ font-size:12px; fill:#eaf0ff; paint-order:stroke; stroke:#0a0c12; stroke-width:4 }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>OpenBallot</strong>
+    <span class="badge">Explore</span>
+
+    <input id="searchBox" type="text" placeholder="Search politician…" list="polList" />
+    <datalist id="polList"></datalist>
+    <button class="btn primary" id="searchBtn">Open</button>
+
+    <div class="toolbar">
+      <a class="btn" href="charts.html">Charts & Insights →</a>
+    </div>
+  </header>
+
+  <svg id="graph"></svg>
+  <div id="hud"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script>
+    const API_BASE = `${location.protocol}//${location.hostname}:8000`;
+    const API = `${API_BASE}/api/graph`;
+
+    const svg = d3.select("#graph");
+    const gAll = svg.append("g"); 
+    const gBack = gAll.append("g"); 
+    const gLinks = gAll.append("g");
+    const gNodes = gAll.append("g");
+    const gLabels = gAll.append("g");
+    const gCorner = gAll.append("g");
+
+    let width, height, lastRaw=null, simulation=null, mode="overview";
+    let currentFocus=null; // politician node
+    let PIN_A=null; // current selected for spotlight/HUD
+
+    const defs = svg.append("defs");
+    defs.append("filter").attr("id","softGlow")
+      .append("feDropShadow").attr("dx",0).attr("dy",0).attr("stdDeviation",4).attr("flood-color","#2aa36b").attr("flood-opacity",.35);
+    const m = defs.append("marker").attr("id","arrow").attr("viewBox","0 -5 10 10")
+      .attr("refX",10).attr("refY",0).attr("markerWidth",6).attr("markerHeight",6).attr("orient","auto");
+    m.append("path").attr("d","M0,-5L10,0L0,5").attr("fill","#9aa4aa");
+
+    function resize(){
+      width = window.innerWidth;
+      height = window.innerHeight - 64;
+      svg.attr("width", width).attr("height", height);
+      if (mode === "spotlight" && currentFocus) drawSpotlight(currentFocus);
+      else if (lastRaw) drawOverview(preprocess(structuredClone(lastRaw)));
+    }
+    window.addEventListener("resize", resize); resize();
+
+    function anchors(){ 
+      return {
+        grp_indiv: { x: width*0.16, y: height*0.52 },
+        grp_pac:   { x: width*0.84, y: height*0.24 },
+        grp_party: { x: width*0.84, y: height*0.80 }
+      };
+    }
+
+    async function fetchGraph(){
+      const url = new URL(API); url.searchParams.set("min_amount","0");
+      const res = await fetch(url, {mode:'cors'}); if(!res.ok) throw new Error("HTTP "+res.status);
+      return res.json();
+    }
+
+    const indexByNorm = new Map();
+    function norm(s){ return (s||"").toLowerCase().replace(/\s+/g,' ').trim() }
+    function buildIndex(raw){
+      indexByNorm.clear();
+      const pols = raw.nodes.filter(n=>n.type==="Politician");
+      const dl = document.getElementById("polList"); dl.innerHTML = "";
+      pols.forEach(n=>{
+        indexByNorm.set(norm(n.name), n);
+        const o=document.createElement('option'); o.value=n.name; dl.appendChild(o);
+      });
+    }
+    function lookup(q){
+      const qn = norm(q); if(!qn) return null;
+      if(indexByNorm.has(qn)) return indexByNorm.get(qn);
+      for(const [k,v] of indexByNorm) if (k.startsWith(qn)) return v;
+      for(const [k,v] of indexByNorm) if (k.includes(qn)) return v;
+      return null;
+    }
+
+    function preprocess(data){
+      const A = anchors();
+      const byId = new Map(data.nodes.map(n=>[n.id,n]));
+      ["grp_indiv","grp_pac","grp_party"].forEach(id=>{
+        const n = byId.get(id); if(n){ n.fx=A[id].x; n.fy=A[id].y; }
+      });
+
+      const amtByPol = new Map();
+      for(const l of data.links){
+        if(l.type!=="donation") continue;
+        const rec = amtByPol.get(l.target)||{indiv:0,pac:0,party:0};
+        if(l.source==="grp_indiv") rec.indiv += +l.amount||0;
+        if(l.source==="grp_pac")   rec.pac   += +l.amount||0;
+        if(l.source==="grp_party") rec.party += +l.amount||0;
+        amtByPol.set(l.target,rec);
+      }
+
+      for(const n of data.nodes){
+        if(n.type!=="Politician") continue;
+        const a = amtByPol.get(n.id)||{indiv:0,pac:0,party:0};
+        const tot=a.indiv+a.pac+a.party;
+        const sI= tot? a.indiv/tot:0, sP= tot? a.pac/tot:0, sY= tot? a.party/tot:0;
+        const I=A.grp_indiv, P=A.grp_pac, Y=A.grp_party;
+        n._tx = sI*I.x + sP*P.x + sY*Y.x;
+        n._ty = sI*I.y + sP*P.y + sY*Y.y;
+        n._total = tot; n._sI=sI; n._sP=sP; n._sY=sY;
+        n._dom = (sI>=sP && sI>=sY) ? "indiv" : (sP>=sI && sP>=sY) ? "pac" : "party";
+      }
+      data._amtByPol = amtByPol;
+      data._anchors = A;
+      return data;
+    }
+
+    function rowFor(id){
+      const node = lastRaw.nodes.find(n=>n.id===id) || {name:id};
+      const a = lastRaw._amtByPol.get(id)||{indiv:0,pac:0,party:0};
+      const tot=a.indiv+a.pac+a.party;
+      return {
+        id, name:node.name, party:node.party||"", state:node.state||"",
+        indiv:a.indiv, pac:a.pac, partyAmt:a.party, total:tot,
+        share_indiv: tot? a.indiv/tot:0,
+        share_pac:   tot? a.pac/tot  :0,
+        share_party: tot? a.party/tot:0
+      };
+    }
+
+    function drawBackdrop(){
+      gBack.selectAll("*").remove();
+      const grad = defs.append("radialGradient").attr("id","bgGrad");
+      grad.append("stop").attr("offset","0%").attr("stop-color","#0d1220");
+      grad.append("stop").attr("offset","70%").attr("stop-color","#0a0d17");
+      grad.append("stop").attr("offset","100%").attr("stop-color","#06080d");
+      gBack.append("rect").attr("class","vignette").attr("x",0).attr("y",0).attr("width",width).attr("height",height).attr("fill","url(#bgGrad)");
+    }
+
+    const colors = {
+      indiv: "#6ee7b7", 
+      pac:   "#60a5fa", 
+      party: "#a78bfa"  
+    };
+    const fgColor = "#2aa36b";
+    const edgeBase = "#7c8a92";
+
+    const nodeR = n=>{
+      if(n.type==="FundingGroup") return 18;
+      const t = n._total||0;
+      return Math.max(4, Math.min(11, 4 + Math.log10(t+10)));
+    };
+    const fillColor = n=>{
+      if(n.type==="FundingGroup") return fgColor;
+      if(!n._dom) return "#e74c3c";
+      return colors[n._dom] || "#e74c3c";
+    };
+    const linkW = l=> Math.max(1, Math.log10((l.amount||1000)+10));
+
+    function drawCorners(A){
+      gCorner.selectAll("*").remove();
+      const t = (x,y,txt,anc)=> gCorner.append("text").attr("class","cornerLabel").attr("x",x).attr("y",y).attr("text-anchor",anc).text(txt);
+      t(A.grp_indiv.x-8, A.grp_indiv.y-14, "Individuals","end");
+      t(A.grp_pac.x+8,   A.grp_pac.y-12,   "PACs / Committees","start");
+      t(A.grp_party.x+8, A.grp_party.y+16, "Party Committees","start");
+    }
+
+    function drawOverview(data){
+      if(mode==="spotlight") return;
+      mode="overview";
+      document.getElementById("hud").style.display="none";
+
+      gLinks.selectAll("*").remove();
+      gNodes.selectAll("*").remove();
+      gLabels.selectAll("*").remove();
+      drawBackdrop();
+      drawCorners(data._anchors);
+
+      svg.call(d3.zoom().scaleExtent([0.5,5]).on("zoom",(ev)=> gAll.attr("transform", ev.transform)));
+
+      const links = data.links.filter(l=>l.type==="donation").map(d=>Object.create(d));
+      const nodes = data.nodes.map(d=>Object.create(d));
+
+      simulation?.stop();
+      simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d=>d.id).distance(l=> 90/Math.max(1,Math.log10((l.amount||1000)+10))).strength(.25))
+        .force("charge", d3.forceManyBody().strength(-18))
+        .force("collide", d3.forceCollide(n=> nodeR(n)+1))
+        .force("posX", d3.forceX(d=> d._tx ?? (d.fx ?? width/2)).strength(d=> d.type==="Politician" ? .9 : 1))
+        .force("posY", d3.forceY(d=> d._ty ?? (d.fy ?? height/2)).strength(d=> d.type==="Politician" ? .9 : 1));
+
+      const link = gLinks.selectAll("path").data(links).join("path")
+        .attr("fill","none")
+        .attr("stroke", edgeBase).attr("stroke-opacity",.22)
+        .attr("stroke-width", l=> linkW(l))
+        .attr("marker-end","url(#arrow)");
+
+      const node = gNodes.selectAll("circle").data(nodes).join("circle")
+        .attr("r", n=> nodeR(n))
+        .attr("fill", n=> fillColor(n))
+        .attr("class", n=> n.type==="FundingGroup" ? "soft" : null)
+        .attr("stroke", n=>{
+          if(n.type!=="Politician") return "none";
+          const maxShare = Math.max(n._sI||0,n._sP||0,n._sY||0);
+          return maxShare>=0.65 ? "#ffd166" : "none"; // accent ring for very skewed mixes
+        })
+        .attr("stroke-width", n=>{
+          const maxShare = Math.max(n._sI||0,n._sP||0,n._sY||0);
+          return maxShare>=0.65 ? 1.8 : 0;
+        })
+        .style("cursor", n=> n.type==="Politician" ? "pointer":"default")
+        .on("mouseenter", (ev,n)=> hoverOn(n, link, node))
+        .on("mouseleave", (ev,n)=> hoverOff(link, node))
+        .on("click",(ev,n)=> { if(n.type==="Politician") openSpotlight(n,true); });
+
+      node.append("title").text(n=> n.type==="FundingGroup" ? n.name : `${n.name}\nparty: ${n.party||"?"}   state: ${n.state||"?"}`);
+
+      simulation.on("tick", ()=>{
+        link.attr("d", d=> `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`);
+        node.attr("cx", d=>d.x).attr("cy", d=>d.y);
+      });
+    }
+
+    function hoverOn(n, linkSel, nodeSel){
+      if(n.type!=="Politician"){ gLabels.selectAll(".hoverLabel").remove(); return; }
+      linkSel.attr("stroke-opacity", .06);
+      nodeSel.attr("opacity", .4);
+
+      linkSel.filter(l=> l.target===n).attr("stroke-opacity", .85).attr("stroke", d=>{
+        const src = (typeof d.source==="object") ? d.source.id : d.source;
+        if(src==="grp_indiv") return colors.indiv;
+        if(src==="grp_pac")   return colors.pac;
+        if(src==="grp_party") return colors.party;
+        return "#e5e7eb";
+      });
+
+      nodeSel.filter(d=> d===n || d.id==="grp_indiv" || d.id==="grp_pac" || d.id==="grp_party")
+             .attr("opacity", 1);
+
+      gLabels.selectAll(".hoverLabel").remove();
+      gLabels.append("text")
+        .attr("class","hoverLabel")
+        .attr("x", n.x+10).attr("y", n.y-10)
+        .text(n.name);
+    }
+    function hoverOff(linkSel, nodeSel){
+      linkSel.attr("stroke-opacity", .22).attr("stroke", edgeBase);
+      nodeSel.attr("opacity", 1);
+      gLabels.selectAll(".hoverLabel").remove();
+    }
+
+    function fmtMoney(v){ if(v>=1e9) return "$"+(v/1e9).toFixed(1)+"B"; if(v>=1e6) return "$"+(v/1e6).toFixed(1)+"M"; if(v>=1e3) return "$"+(v/1e3).toFixed(0)+"k"; return "$"+Math.round(v) }
+
+    function drawSpotlight(pol){
+      mode="spotlight";
+      document.getElementById("hud").style.display="none";
+      drawBackdrop();
+      gLinks.selectAll("*").remove(); gNodes.selectAll("*").remove(); gLabels.selectAll("*").remove(); gCorner.selectAll("*").remove();
+      svg.call(d3.zoom().on("zoom", null)); // fixed camera
+
+      const cx = width*.5, cy = height*.52;
+      const spokes = [
+        { id:"grp_indiv",  name:"Individuals",       ang:-Math.PI*.85, col:colors.indiv },
+        { id:"grp_pac",    name:"PACs / Committees", ang:-Math.PI*.15, col:colors.pac },
+        { id:"grp_party",  name:"Party Committees",  ang: Math.PI*.50, col:colors.party }
+      ];
+      const amounts = {grp_indiv:0,grp_pac:0,grp_party:0};
+      for(const l of lastRaw.links){
+        if(l.type==="donation" && l.target===pol.id && amounts.hasOwnProperty(l.source)) amounts[l.source]+= +l.amount||0;
+      }
+      const total = amounts.grp_indiv+amounts.grp_pac+amounts.grp_party;
+      const shareI = total? amounts.grp_indiv/total:0, shareP = total? amounts.grp_pac/total:0, shareY = total? amounts.grp_party/total:0;
+
+      gNodes.append("circle").attr("cx",cx).attr("cy",cy).attr("r",38).attr("fill", fillColor(pol)||"#e74c3c").attr("class","pulse");
+      gNodes.append("circle").attr("cx",cx).attr("cy",cy).attr("r",70).attr("fill","none").attr("stroke","#e74c3c").attr("stroke-opacity",.12).attr("stroke-width",18);
+
+      gLabels.append("text").attr("x",cx).attr("y",cy+5).attr("text-anchor","middle").attr("class","labelText").text(pol.name);
+      gLabels.append("text").attr("x",cx).attr("y",cy+42).attr("text-anchor","middle").attr("fill","#bfc9d6")
+        .text(`party: ${pol.party||"?"}  state: ${pol.state||"?"}  ·  total: ${fmtMoney(total)}`);
+
+      const radius = Math.min(width,height)*.32, spokeR=26;
+
+      spokes.forEach(s=>{
+        const x = cx + radius*Math.cos(s.ang);
+        const y = cy + radius*Math.sin(s.ang);
+        const dx=x-cx, dy=y-cy, mx=cx+dx*.55 - dy*.18, my=cy+dy*.55 + dx*.18;
+        const id = "path_"+s.id;
+        gLinks.append("path").attr("id",id).attr("d",`M${cx},${cy} Q${mx},${my} ${x},${y}`)
+          .attr("fill","none").attr("stroke","#9aa4aa").attr("stroke-width", 2+Math.log10((amounts[s.id]||1000)+10)).attr("marker-end","url(#arrow)");
+        gNodes.append("circle").attr("cx",x).attr("cy",y).attr("r",spokeR).attr("fill",s.col).attr("class","soft");
+        gLabels.append("text").attr("x",x).attr("y",y+4).attr("text-anchor","middle").attr("class","labelText").text(s.name);
+        gLabels.append("text").attr("class","edgeLabel").append("textPath").attr("href","#"+id).attr("startOffset","56%").text(fmtMoney(amounts[s.id]||0));
+      });
+
+      const hud = document.getElementById("hud");
+      hud.style.display = "block";
+      hud.innerHTML = `
+        <h4>${pol.name}</h4>
+        <div class="row"><span>Total Raised</span><strong>${fmtMoney(total)}</strong></div>
+        <div class="row"><span>Individuals</span><strong>${(shareI*100).toFixed(1)}%</strong></div>
+        <div class="row"><span>PACs / Committees</span><strong>${(shareP*100).toFixed(1)}%</strong></div>
+        <div class="row"><span>Party Committees</span><strong>${(shareY*100).toFixed(1)}%</strong></div>
+        <span class="pill">MixCode: I${(shareI*100).toFixed(0)} / P${(shareP*100).toFixed(0)} / Y${(shareY*100).toFixed(0)}</span>
+      `;
+    }
+
+    // ------------ SEARCH ------------
+    const searchBox=document.getElementById('searchBox');
+    document.getElementById('searchBtn').onclick = runSearch;
+    searchBox.addEventListener('keydown', e=> { if(e.key==='Enter') runSearch(); });
+    function runSearch(){
+      const m = lookup(searchBox.value);
+      if(!m){ alert("No match. Try a last name or check spelling."); return; }
+      PIN_A = rowFor(m.id);
+      currentFocus=m; drawSpotlight(m);
+    }
+    (async function init(){
+      lastRaw = preprocess(await fetchGraph());
+      buildIndex(lastRaw);
+      drawOverview(lastRaw);
+
+      const q=new URLSearchParams(location.search).get('q');
+      if(q){ const m=lookup(q); if(m){ PIN_A=rowFor(m.id); currentFocus=m; drawSpotlight(m); } }
+    })().catch(err=>{
+      console.error(err);
+      alert(`Failed to load graph. Is the API running at ${API_BASE}?`);
+    });
+  </script>
+</body>
+</html>

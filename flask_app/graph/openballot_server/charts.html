@@ -1,0 +1,156 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>OpenBallot — Explore by State</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: dark }
+    *{ box-sizing:border-box }
+    body{ margin:0; background:#0b0f16; color:#eef2ff; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto }
+    header{ padding:16px 14px; border-bottom:1px solid #18243a; background:#0b1018; position:sticky; top:0; z-index:5; display:flex; gap:12px; align-items:center; flex-wrap:wrap }
+    header strong{ font-weight:700; color:#c7d3ff }
+    .spacer{ flex:1 }
+    .btn{ background:#162236; border:1px solid #2b4270; color:#e8f0ff; border-radius:10px; padding:8px 10px; text-decoration:none }
+    select{ background:#0d1220; border:1px solid #25344f; color:#dfe7ff; padding:8px 10px; border-radius:10px }
+    main{ padding:20px; display:grid; gap:20px }
+    .card{ background:#0e1422; border:1px solid #1e2b46; border-radius:14px; padding:18px; box-shadow:0 10px 30px rgba(0,0,0,.28) }
+    .title{ margin:0 0 8px; font-size:18px; color:#c7d3ff }
+    .muted{ color:#93a1ad; font-size:14px; line-height:1.7 }
+    .bn-grid{ display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px }
+    .bn{ background:#10182a; border:1px solid #1e2b46; border-radius:12px; padding:14px }
+    .bn b{ display:block; font-size:30px; line-height:1.1 }
+    .bn span{ color:#9fb3c8; font-size:13px }
+    .grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:20px }
+  </style>
+</head>
+
+<body>
+  <header>
+    <strong>OpenBallot</strong> <span class="muted">• State Insights</span>
+    <div class="spacer"></div>
+    <label class="muted">Party</label>
+    <select id="partySel">
+      <option value="ALL">All</option>
+      <option value="D">Democratic</option>
+      <option value="R">Republican</option>
+      <option value="Other">Other</option>
+    </select>
+    <a class="btn" href="demo.html">← Back to Map</a>
+  </header>
+
+  <main>
+    <section class="bn-grid" id="bigNumbers"></section>
+
+    <section class="grid-2">
+      <div class="card">
+        <h3 class="title">Where races are smaller</h3>
+        <div id="leaders_low" style="width:100%;height:520px"></div>
+        <p class="muted">
+          These are states with fewer candidates in the dataset. Fewer names can reflect smaller populations, fewer districts, or lower data coverage.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3 class="title">Where races are busier</h3>
+        <div id="leaders_high" style="width:100%;height:520px"></div>
+        <p class="muted">
+          These states have many candidates in view — a sign of larger electorates, more competitive districts, or higher data reporting.
+        </p>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="muted">
+        <p><b>OpenBallot</b> is built to make elections more transparent, not just who’s on the ballot, but also where political participation is strongest.  
+        This page gives a quick, big-picture look at how evenly candidates are distributed across the country.</p>
+
+        <p>Seeing which states have many candidates versus few helps voters and journalists understand the shape of competition.  
+        A state with many candidates might signal diverse representation and voter choice, while a state with few might highlight uncontested seats or missing data.</p>
+
+        <p>As OpenBallot adds financial and influence data, these same charts will evolve to show where donations, lobbying, and grassroots funding
+        concentrate helping you connect <i>who’s running</i> to <i>how campaigns are funded</i>.</p>
+
+        <p><b>In short:</b> this exists to help you see the scale of participation before diving into the money.  
+        It’s a first step toward understanding how fair and active each state’s political landscape really is.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API = `${location.protocol}//${location.hostname}:8000/api/indiv_percentiles`;
+    let ROWS = [], PARTY = "ALL";
+
+    async function ensurePlotly(){
+      if(window.Plotly) return;
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src="https://cdn.plot.ly/plotly-2.30.0.min.js";
+        s.onload=res; s.onerror=()=>rej(new Error("Plotly failed")); 
+        document.head.appendChild(s);
+      });
+    }
+
+    async function fetchRows(){
+      const r = await fetch(API, {mode:'cors'});
+      const j = await r.json();
+      return j.rows.map(x=>({
+        name: x.name || x.cand_name || "",
+        party: (x.party || "").toUpperCase(),
+        state: (x.state || "").toUpperCase(),
+      }));
+    }
+
+    function renderBig(rows){
+      const n = rows.length;
+      const byParty = p => rows.filter(r=>r.party===p).length;
+      document.getElementById('bigNumbers').innerHTML = `
+        <div class="bn"><span>Total candidates</span><b>${n}</b></div>
+        <div class="bn"><span>Democrats</span><b>${byParty("D")}</b></div>
+        <div class="bn"><span>Republicans</span><b>${byParty("R")}</b></div>
+      `;
+    }
+
+    async function renderLeadersByCount(rows){
+      await ensurePlotly();
+      const byS = new Map();
+      rows.forEach(r=>{
+        if(!r.state) return;
+        byS.set(r.state, (byS.get(r.state)||0)+1);
+      });
+      const arr = Array.from(byS, ([state,count])=>({state,count}));
+      const low = arr.slice().sort((a,b)=>a.count-b.count).slice(0,20);
+      const high = arr.slice().sort((a,b)=>b.count-a.count).slice(0,20);
+
+      const mk=(arr,color,title)=>({
+        data:[{x:arr.map(r=>r.count), y:arr.map(r=>r.state),
+               type:'bar', orientation:'h', marker:{color}}],
+        layout:{title:{text:title,font:{size:14,color:'#c7d3ff'}},
+          margin:{l:120,r:20,t:30,b:50},
+          paper_bgcolor:'#0e131b', plot_bgcolor:'#0e131b',
+          xaxis:{gridcolor:'#1c2534'}, yaxis:{gridcolor:'#1c2534'}}
+      });
+      Plotly.newPlot('leaders_low', mk(low,'#6ee7b7').data, mk(low).layout, {displayModeBar:false});
+      Plotly.newPlot('leaders_high', mk(high,'#60a5fa').data, mk(high).layout, {displayModeBar:false});
+    }
+
+    async function init(){
+      const r = await fetchRows();
+      ROWS = r;
+      renderBig(ROWS);
+      renderLeadersByCount(ROWS);
+      document.getElementById('partySel').addEventListener('change',()=>{
+        PARTY=document.getElementById('partySel').value;
+        const filtered = PARTY==="ALL"
+          ? ROWS
+          : (["D","R"].includes(PARTY)
+              ? ROWS.filter(r=>r.party===PARTY)
+              : ROWS.filter(r=>r.party!=="D"&&r.party!=="R"));
+        renderBig(filtered);
+        renderLeadersByCount(filtered);
+      });
+    }
+    init();
+  </script>
+</body>
+</html>
