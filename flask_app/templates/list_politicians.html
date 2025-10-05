@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}
+    List & Filter Politicians
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Filter Sidebar -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-funnel me-2"></i>Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Search Bar -->
+                    <div class="mb-4">
+                        <label for="searchInput" class="form-label fw-bold">Search</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text" class="form-control" id="searchInput" 
+                                   placeholder="Search politicians..." 
+                                   value="{{ search_term }}">
+                        </div>
+                    </div>
+
+                    <!-- Chamber Filter -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Chamber</label>
+                        <div class="form-check">
+                            <input class="form-check-input chamber-filter" type="checkbox" value="" id="chamber-all" checked>
+                            <label class="form-check-label" for="chamber-all">
+                                All Chambers
+                            </label>
+                        </div>
+                        {% for chamber in all_chambers %}
+                        <div class="form-check">
+                            <input class="form-check-input chamber-filter" type="checkbox" 
+                                   value="{{ chamber }}" id="chamber-{{ chamber }}"
+                                   {% if chamber in selected_chambers %}checked{% endif %}>
+                            <label class="form-check-label" for="chamber-{{ chamber }}">
+                                {{ chamber }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- State Filter -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">State</label>
+                        <div class="form-check">
+                            <input class="form-check-input state-filter" type="checkbox" value="" id="state-all" checked>
+                            <label class="form-check-label" for="state-all">
+                                All States
+                            </label>
+                        </div>
+                        {% for state in all_states %}
+                        <div class="form-check">
+                            <input class="form-check-input state-filter" type="checkbox" 
+                                   value="{{ state }}" id="state-{{ state }}"
+                                   {% if state in selected_states %}checked{% endif %}>
+                            <label class="form-check-label" for="state-{{ state }}">
+                                {{ state }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Party Filter -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Political Party</label>
+                        <div class="form-check">
+                            <input class="form-check-input party-filter" type="checkbox" value="" id="party-all" checked>
+                            <label class="form-check-label" for="party-all">
+                                All Parties
+                            </label>
+                        </div>
+                        {% for party in all_parties %}
+                        <div class="form-check">
+                            <input class="form-check-input party-filter" type="checkbox" 
+                                   value="{{ party }}" id="party-{{ party }}"
+                                   {% if party in selected_parties %}checked{% endif %}>
+                            <label class="form-check-label" for="party-{{ party }}">
+                                {{ party }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Clear Filters Button -->
+                    <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="clearFilters">
+                        <i class="bi bi-x-circle me-1"></i>Clear All Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-people me-2"></i>Politicians
+                            <span class="badge bg-primary ms-2" id="resultCount">{{ politicians|length }}</span>
+                        </h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="gridView">
+                                <i class="bi bi-grid-3x3-gap"></i> Grid
+                            </button>
+                            <button type="button" class="btn btn-primary" id="listView">
+                                <i class="bi bi-list"></i> List
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Loading Spinner -->
+                    <div id="loadingSpinner" class="text-center d-none">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="resultsContainer">
+                        {% if politicians %}
+                            <div class="row" id="politiciansGrid">
+                                {% for politician in politicians %}
+                                <div class="col-lg-4 col-md-6 mb-3 politician-card">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h6 class="card-title mb-0">
+                                                    <a href="{{ url_for('politician', politician_id=politician.candidate_id) }}" 
+                                                       class="text-decoration-none">
+                                                        {{ politician.candidate_name }}
+                                                    </a>
+                                                </h6>
+                                                <span class="badge bg-secondary">{{ politician.chamber }}</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-building me-1"></i>
+                                                    {{ politician.office_state }}
+                                                    {% if politician.office_district and politician.office_district != '0' %}
+                                                        - District {{ politician.office_district }}
+                                                    {% endif %}
+                                                </small>
+                                            </div>
+                                            <div class="mb-2">
+                                                <span class="badge bg-primary">{{ politician.political_party_affiliation }}</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <small class="text-muted">
+                                                    <i class="bi bi-currency-dollar me-1"></i>
+                                                    Total Receipts: ${{ "{:,.0f}".format(politician.total_receipts) }}
+                                                </small>
+                                            </div>
+                                            {% if politician.website_url %}
+                                            <div class="mt-auto">
+                                                <a href="{{ politician.website_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-globe me-1"></i>Website
+                                                </a>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-search display-1 text-muted"></i>
+                                <h4 class="text-muted mt-3">No politicians found</h4>
+                                <p class="text-muted">Try adjusting your search or filters.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for Live Search and Filtering -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const chamberFilters = document.querySelectorAll('.chamber-filter');
+    const stateFilters = document.querySelectorAll('.state-filter');
+    const partyFilters = document.querySelectorAll('.party-filter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultCount = document.getElementById('resultCount');
+    const gridViewBtn = document.getElementById('gridView');
+    const listViewBtn = document.getElementById('listView');
+
+    let searchTimeout;
+    let currentView = 'grid';
+
+    // Debounced search function
+    function performSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadPoliticians();
+        }, 300);
+    }
+
+    // Load politicians with current filters
+    function loadPoliticians() {
+        const searchTerm = searchInput.value.trim();
+        const selectedChambers = Array.from(document.querySelectorAll('.chamber-filter:checked'))
+            .map(cb => cb.value).filter(v => v !== '');
+        const selectedStates = Array.from(document.querySelectorAll('.state-filter:checked'))
+            .map(cb => cb.value).filter(v => v !== '');
+        const selectedParties = Array.from(document.querySelectorAll('.party-filter:checked'))
+            .map(cb => cb.value).filter(v => v !== '');
+
+        // Show loading spinner
+        loadingSpinner.classList.remove('d-none');
+        resultsContainer.innerHTML = '';
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (searchTerm) params.append('search', searchTerm);
+        selectedChambers.forEach(chamber => params.append('chamber', chamber));
+        selectedStates.forEach(state => params.append('state', state));
+        selectedParties.forEach(party => params.append('party', party));
+
+        // Fetch data
+        fetch(`/api/politicians?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                displayPoliticians(data);
+                updateResultCount(data.length);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultsContainer.innerHTML = '<div class="alert alert-danger">Error loading politicians. Please try again.</div>';
+            })
+            .finally(() => {
+                loadingSpinner.classList.add('d-none');
+            });
+    }
+
+    // Display politicians in the current view
+    function displayPoliticians(politicians) {
+        if (politicians.length === 0) {
+            resultsContainer.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="bi bi-search display-1 text-muted"></i>
+                    <h4 class="text-muted mt-3">No politicians found</h4>
+                    <p class="text-muted">Try adjusting your search or filters.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const container = currentView === 'grid' ? 
+            '<div class="row" id="politiciansGrid">' : 
+            '<div class="list-group" id="politiciansList">';
+
+        let html = container;
+
+        politicians.forEach(politician => {
+            if (currentView === 'grid') {
+                html += createGridCard(politician);
+            } else {
+                html += createListItem(politician);
+            }
+        });
+
+        html += '</div>';
+        resultsContainer.innerHTML = html;
+    }
+
+    // Create grid card HTML
+    function createGridCard(politician) {
+        const websiteBtn = politician.website_url ? 
+            `<a href="${politician.website_url}" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-globe me-1"></i>Website
+            </a>` : '';
+
+        return `
+            <div class="col-lg-4 col-md-6 mb-3 politician-card">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">
+                                <a href="/politician/${politician.candidate_id}" class="text-decoration-none">
+                                    ${politician.candidate_name}
+                                </a>
+                            </h6>
+                            <span class="badge bg-secondary">${politician.chamber}</span>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-building me-1"></i>
+                                ${politician.office_state}
+                                ${politician.office_district && politician.office_district !== '0' ? 
+                                    `- District ${politician.office_district}` : ''}
+                            </small>
+                        </div>
+                        <div class="mb-2">
+                            <span class="badge bg-primary">${politician.political_party_affiliation}</span>
+                        </div>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="bi bi-currency-dollar me-1"></i>
+                                Total Receipts: $${Number(politician.total_receipts).toLocaleString()}
+                            </small>
+                        </div>
+                        ${websiteBtn ? `<div class="mt-auto">${websiteBtn}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Create list item HTML
+    function createListItem(politician) {
+        const websiteBtn = politician.website_url ? 
+            `<a href="${politician.website_url}" target="_blank" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-globe me-1"></i>Website
+            </a>` : '';
+
+        return `
+            <div class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h6 class="mb-1">
+                            <a href="/politician/${politician.candidate_id}" class="text-decoration-none">
+                                ${politician.candidate_name}
+                            </a>
+                        </h6>
+                        <small class="text-muted">
+                            <i class="bi bi-building me-1"></i>
+                            ${politician.office_state}
+                            ${politician.office_district && politician.office_district !== '0' ? 
+                                `- District ${politician.office_district}` : ''}
+                        </small>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="badge bg-secondary">${politician.chamber}</span>
+                    </div>
+                    <div class="col-md-2">
+                        <span class="badge bg-primary">${politician.political_party_affiliation}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <small class="text-muted">
+                            <i class="bi bi-currency-dollar me-1"></i>
+                            $${Number(politician.total_receipts).toLocaleString()}
+                        </small>
+                    </div>
+                    <div class="col-md-1">
+                        ${websiteBtn}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Update result count
+    function updateResultCount(count) {
+        resultCount.textContent = count;
+    }
+
+    // Handle "All" checkboxes
+    function setupAllCheckboxes(filterClass, allCheckboxId) {
+        const allCheckbox = document.getElementById(allCheckboxId);
+        const otherCheckboxes = document.querySelectorAll(`.${filterClass}:not(#${allCheckboxId})`);
+
+        allCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                otherCheckboxes.forEach(cb => cb.checked = false);
+            }
+            performSearch();
+        });
+
+        otherCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    allCheckbox.checked = false;
+                }
+                performSearch();
+            });
+        });
+    }
+
+    // Clear all filters
+    clearFiltersBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        document.querySelectorAll('.chamber-filter, .state-filter, .party-filter').forEach(cb => {
+            if (cb.id.includes('-all')) {
+                cb.checked = true;
+            } else {
+                cb.checked = false;
+            }
+        });
+        performSearch();
+    });
+
+    // View toggle
+    gridViewBtn.addEventListener('click', function() {
+        currentView = 'grid';
+        gridViewBtn.classList.add('btn-primary');
+        gridViewBtn.classList.remove('btn-outline-primary');
+        listViewBtn.classList.remove('btn-primary');
+        listViewBtn.classList.add('btn-outline-primary');
+        loadPoliticians();
+    });
+
+    listViewBtn.addEventListener('click', function() {
+        currentView = 'list';
+        listViewBtn.classList.add('btn-primary');
+        listViewBtn.classList.remove('btn-outline-primary');
+        gridViewBtn.classList.remove('btn-primary');
+        gridViewBtn.classList.add('btn-outline-primary');
+        loadPoliticians();
+    });
+
+    // Event listeners
+    searchInput.addEventListener('input', performSearch);
+
+    // Setup "All" checkboxes
+    setupAllCheckboxes('chamber-filter', 'chamber-all');
+    setupAllCheckboxes('state-filter', 'state-all');
+    setupAllCheckboxes('party-filter', 'party-all');
+
+    // Initial load
+    loadPoliticians();
+});
+</script>
+
+<style>
+.politician-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.politician-card:hover {
+    transform: translateY(-2px);
+}
+
+.card {
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+@media (max-width: 768px) {
+    .col-md-3 {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+
+{% endblock %}

@@ -6,6 +6,7 @@
     <title>{% block title %}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/politician-graph.css') }}">
   </head>
   <body>
     <!-- Navigation Bar -->
@@ -14,7 +15,7 @@
         <!-- Brand/Home Button -->
         <a class="navbar-brand d-flex align-items-center" href="{{ url_for('index') }}">
           <i class="bi bi-house-fill me-2"></i>
-          <span class="fw-bold">Political Tracker</span>
+          <span class="fw-bold">Home</span>
         </a>
         
         <!-- Mobile Toggle Button -->
@@ -24,11 +25,15 @@
         
         <!-- Navigation Items -->
         <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav me-auto">
+          <ul class="navbar-brand navbar-nav me-auto">
             <li class="nav-item">
               <!-- <a class="nav-link" href="{{ url_for('index') }}"> -->
                 <!-- <i class="bi bi-house me-1"></i>Home -->
               <!-- </a> -->
+               <a class="nav-link" href="{{ url_for('list_politicians') }}" style="color:white">
+                <i class="bi bi-card-checklist"></i>
+                List and Filter Politicians
+              </a>
             </li>
           </ul>
           
@@ -53,5 +58,7 @@
       {% endblock %}
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script src="{{ url_for('static', filename='js/politician-graph.js') }}"></script>
   </body>
 </html>

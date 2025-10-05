@@ -59,6 +59,7 @@ def populate_from_csv(csv_file_path, chamber):
                     candidate_id=safe_string(row['CAND_ID']),
                     candidate_name=safe_string(row['CAND_NAME']),
                     chamber=chamber,
+                    website_url = None,
                     incumbent_challenger_indicator=safe_string(row['CAND_ICI']),
                     political_party_affiliation=safe_string(row['CAND_PTY_AFFILIATION']),
                     total_receipts=safe_float(row['TTL_RECEIPTS']),
@@ -72,14 +73,14 @@ def populate_from_csv(csv_file_path, chamber):
                     individual_refunds=safe_float(row['INDIV_REFUNDS']),
                     committee_refunds=safe_float(row['CMTE_REFUNDS']),
                     percent_individual_contributions=safe_float(row['PCT_INDIV_CONTRIB']),
-                    pac_contribution_percentage=safe_float(row['PAC_Contribution_%']),
-                    party_contribution_percentage=safe_float(row['Party_Contribution_%']),
-                    adjusted_party_contributions=safe_float(row['Adj_Party_Contrib']),
-                    adjusted_pac_contributions=safe_float(row['Adj_PAC_Contrib']),
-                    percent_individual=safe_float(row['Pct_Individual']),
-                    funding_group=safe_string(row['Funding_Group']),
-                    individual_percentile_all=safe_float(row['Individual_Pctile_All']),
-                    individual_percentile_bin=safe_string(row['Individual_Pctile_Bin'])
+                    pac_contribution_percentage=safe_float(row.get('PAC_Contribution_%', 0.0)),
+                    party_contribution_percentage=safe_float(row.get('Party_Contribution_%', 0.0)),
+                    adjusted_party_contributions=safe_float(row.get('Adj_Party_Contrib', 0.0)),
+                    adjusted_pac_contributions=safe_float(row.get('Adj_PAC_Contrib', 0.0)),
+                    percent_individual=safe_float(row.get('Pct_Individual', 0.0)) or safe_float(row.get('PCT_FROM_INDIV', 0.0)),
+                    funding_group=safe_string(row.get('Funding_Group', '')),
+                    individual_percentile_all=safe_float(row.get('Individual_Pctile_All', 0.0)),
+                    individual_percentile_bin=safe_string(row.get('Individual_Pctile_Bin', ''))
                 )
                 
                 db.session.add(politician)
@@ -127,10 +128,15 @@ def main1():
         # Process Senate data
         senate_csv = new_data_dir / 'senate_candidates_indiv_percentiles.csv'
         senate_count = populate_from_csv(senate_csv, 'Senate')
+
+        #Process President data
+        president_csv = new_data_dir / 'president_data.csv'
+        president_count = populate_from_csv(president_csv, 'President')
         
-        total_count = house_count + senate_count
+        total_count = president_count
         print(f"\nDatabase population complete!")
         print(f"Total records added: {total_count}")
+        print(f"  - President: {president_count}")
         print(f"  - House: {house_count}")
         print(f"  - Senate: {senate_count}")
 
@@ -156,11 +162,11 @@ def main2():
         # db.session.commit()
         
         # Process House data
-        house_csv = new_data_dir / 'updated_website.csv'
+        house_csv = new_data_dir / 'house_websites.csv'
         house_count = populate_website_urls_from_csv(house_csv, 'House')
         
         # Process Senate data
-        senate_csv = new_data_dir / 'senate_members_csv.csv'
+        senate_csv = new_data_dir / 'senate_websites.csv'
         senate_count = populate_website_urls_from_csv(senate_csv, 'Senate')
         
         total_count = senate_count
@@ -263,4 +269,5 @@ def format_name_for_search(name):
     return name.strip()
 
 if __name__ == '__main__':
+    main1()
     main2()

@@ -1,0 +1,122 @@
+/* Politician Graph Styling - OpenBallot Inspired */
+
+.politician-graph-section {
+    margin-top: 2rem;
+}
+
+.politician-graph-container {
+    background: #0a0c12;
+    border: 1px solid #162236;
+    border-radius: 0.875rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    min-height: 450px;
+    position: relative;
+    color: #eaf0ff;
+}
+
+.politician-graph-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #162236;
+}
+
+.politician-graph-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #eaf0ff;
+}
+
+.politician-graph-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.politician-graph-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #93a9ff;
+}
+
+.politician-graph-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+}
+
+.politician-graph-controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.politician-graph-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #6c757d;
+}
+
+.politician-graph-loading .spinner-border {
+    margin-right: 0.5rem;
+}
+
+/* Graph SVG styling */
+.politician-graph-container svg {
+    background: #fff;
+    border-radius: 0.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .politician-graph-container {
+        padding: 0.5rem;
+        min-height: 300px;
+    }
+    
+    .politician-graph-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .politician-graph-legend {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .politician-graph-controls {
+        flex-wrap: wrap;
+    }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+    .politician-graph-container {
+        background: #343a40;
+        border-color: #495057;
+    }
+    
+    .politician-graph-container svg {
+        background: #495057;
+    }
+    
+    .politician-graph-title {
+        color: #f8f9fa;
+    }
+    
+    .politician-graph-legend-item {
+        color: #adb5bd;
+    }
+}

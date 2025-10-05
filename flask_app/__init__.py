@@ -48,3 +48,4 @@ with app.app_context():
 # Import all route modules
 from . import routes
 from . import politician_routes
+from . import graph_api

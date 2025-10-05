@@ -44,14 +44,11 @@ def fuzzy_search_politicians(search_term, limit=20):
     if not politicians:
         return []
     
-    # Create a dictionary mapping formatted names to politician objects
-    # name_to_politician = {}
     politician_id_to_name = {}
     for politician in politicians:
         # Convert "LAST, FIRST" to "FIRST LAST" for better matching
         formatted_name = format_name_for_search(politician.candidate_name)
         politician_id_to_name[politician.candidate_id] = formatted_name
-        # name_to_politician[formatted_name] = politician
     
     # Perform fuzzy matching
     matches = process.extract(search_term, politician_id_to_name, limit=limit)
@@ -77,3 +74,94 @@ def fuzzy_search_politicians(search_term, limit=20):
             'score': score
         })
     return results
+
+@app.route('/list_politicians')
+def list_politicians():
+    # Get query parameters for filtering
+    search_term = request.args.get('search', '').strip()
+    chambers = request.args.getlist('chamber')
+    states = request.args.getlist('state')
+    parties = request.args.getlist('party')
+    
+    # Start with base query
+    query = Politician.query
+    
+    # Apply search filter
+    if search_term:
+        query = query.filter(Politician.candidate_name.ilike(f'%{search_term}%'))
+    
+    # Apply chamber filter
+    if chambers:
+        query = query.filter(Politician.chamber.in_(chambers))
+    
+    # Apply state filter
+    if states:
+        query = query.filter(Politician.office_state.in_(states))
+    
+    # Apply party filter
+    if parties:
+        query = query.filter(Politician.political_party_affiliation.in_(parties))
+    
+    politicians = query.all()
+    
+    # Get unique values for filter options
+    all_chambers = [p.chamber for p in Politician.query.with_entities(Politician.chamber).distinct().all() if p.chamber]
+    all_states = [p.office_state for p in Politician.query.with_entities(Politician.office_state).distinct().all() if p.office_state and p.office_state != '00']
+    all_parties = [p.political_party_affiliation for p in Politician.query.with_entities(Politician.political_party_affiliation).distinct().all() if p.political_party_affiliation]
+    
+    return render_template('list_politicians.html', 
+                         politicians=politicians,
+                         search_term=search_term,
+                         selected_chambers=chambers,
+                         selected_states=states,
+                         selected_parties=parties,
+                         all_chambers=sorted(all_chambers),
+                         all_states=sorted(all_states),
+                         all_parties=sorted(all_parties))
+
+@app.route('/api/politicians')
+def api_politicians():
+    """API endpoint for live search and filtering"""
+    # Get query parameters for filtering
+    search_term = request.args.get('search', '').strip()
+    chambers = request.args.getlist('chamber')
+    states = request.args.getlist('state')
+    parties = request.args.getlist('party')
+    
+    # Start with base query
+    query = Politician.query
+    
+    # Apply search filter
+    if search_term:
+        query = query.filter(Politician.candidate_name.ilike(f'%{search_term}%'))
+    
+    # Apply chamber filter
+    if chambers:
+        query = query.filter(Politician.chamber.in_(chambers))
+    
+    # Apply state filter
+    if states:
+        query = query.filter(Politician.office_state.in_(states))
+    
+    # Apply party filter
+    if parties:
+        query = query.filter(Politician.political_party_affiliation.in_(parties))
+    
+    politicians = query.limit(100).all()  # Limit for performance
+    
+    # Convert to JSON-serializable format
+    results = []
+    for p in politicians:
+        results.append({
+            'id': p.id,
+            'candidate_id': p.candidate_id,
+            'candidate_name': p.candidate_name,
+            'chamber': p.chamber,
+            'political_party_affiliation': p.political_party_affiliation,
+            'office_state': p.office_state,
+            'office_district': p.office_district,
+            'total_receipts': p.total_receipts,
+            'website_url': p.website_url
+        })
+    
+    return jsonify(results)
