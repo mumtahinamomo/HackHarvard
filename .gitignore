@@ -1,2 +1,10 @@
 .env
 flask_app/__pycache__/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+instance/
+.migrations/

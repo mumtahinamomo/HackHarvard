@@ -6,6 +6,7 @@ Sets up the Flask app, configuration, template filters, and imports all route mo
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from flask_migrate import Migrate
 
 from dotenv import load_dotenv
 import os
@@ -28,6 +29,7 @@ class Base(DeclarativeBase):
     pass
 
 db = SQLAlchemy(model_class=Base)
+migrate = Migrate(app, db)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI')
 

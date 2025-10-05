@@ -14,6 +14,7 @@ class Politician(db.Model):
     candidate_id: Mapped[str] = mapped_column(String, unique=True)
     candidate_name: Mapped[str] = mapped_column(String)
     chamber: Mapped[str] = mapped_column(String) # Custom
+    website_url: Mapped[str] = mapped_column(String, nullable=True)
     incumbent_challenger_indicator: Mapped[str] = mapped_column(String)
     political_party_affiliation: Mapped[str] = mapped_column(String)
     total_receipts: Mapped[float] = mapped_column(Float)
