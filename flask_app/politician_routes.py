@@ -2,8 +2,9 @@ from flask import redirect, render_template, request, jsonify, url_for
 import pandas as pd
 from fuzzywuzzy import process
 import csv
+from sqlalchemy import func
 
-from . import app
+from . import app, db
 from .models import Politician
 
 @app.route('/politician/<string:politician_id>')
@@ -107,7 +108,20 @@ def list_politicians():
     # Get unique values for filter options
     all_chambers = [p.chamber for p in Politician.query.with_entities(Politician.chamber).distinct().all() if p.chamber]
     all_states = [p.office_state for p in Politician.query.with_entities(Politician.office_state).distinct().all() if p.office_state and p.office_state != '00']
-    all_parties = [p.political_party_affiliation for p in Politician.query.with_entities(Politician.political_party_affiliation).distinct().all() if p.political_party_affiliation]
+    
+    # Get parties sorted by number of candidates (most to least)
+    party_counts = db.session.query(
+        Politician.political_party_affiliation,
+        func.count(Politician.id).label('count')
+    ).filter(
+        Politician.political_party_affiliation.isnot(None)
+    ).group_by(
+        Politician.political_party_affiliation
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
+    all_parties = [party[0] for party in party_counts]
     
     return render_template('list_politicians.html', 
                          politicians=politicians,
@@ -117,7 +131,8 @@ def list_politicians():
                          selected_parties=parties,
                          all_chambers=sorted(all_chambers),
                          all_states=sorted(all_states),
-                         all_parties=sorted(all_parties))
+                         all_parties=all_parties,
+                         party_counts=party_counts)
 
 @app.route('/api/politicians')
 def api_politicians():
@@ -127,6 +142,8 @@ def api_politicians():
     chambers = request.args.getlist('chamber')
     states = request.args.getlist('state')
     parties = request.args.getlist('party')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 100))
     
     # Start with base query
     query = Politician.query
@@ -147,7 +164,11 @@ def api_politicians():
     if parties:
         query = query.filter(Politician.political_party_affiliation.in_(parties))
     
-    politicians = query.limit(100).all()  # Limit for performance
+    # Get total count for pagination
+    total_count = query.count()
+    
+    # Apply pagination
+    politicians = query.offset((page - 1) * per_page).limit(per_page).all()
     
     # Convert to JSON-serializable format
     results = []
@@ -164,4 +185,10 @@ def api_politicians():
             'website_url': p.website_url
         })
     
-    return jsonify(results)
+    return jsonify({
+        'politicians': results,
+        'total_count': total_count,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total_count + per_page - 1) // per_page
+    })

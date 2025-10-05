@@ -269,5 +269,5 @@ def format_name_for_search(name):
     return name.strip()
 
 if __name__ == '__main__':
-    main1()
+    # main1()
     main2()

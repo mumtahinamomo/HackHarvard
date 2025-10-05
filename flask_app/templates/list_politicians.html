@@ -87,6 +87,7 @@
                                    {% if party in selected_parties %}checked{% endif %}>
                             <label class="form-check-label" for="party-{{ party }}">
                                 {{ party }}
+                                <small class="text-muted">({{ party_counts[loop.index0][1] }})</small>
                             </label>
                         </div>
                         {% endfor %}
@@ -238,8 +239,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`/api/politicians?${params.toString()}`)
             .then(response => response.json())
             .then(data => {
-                displayPoliticians(data);
-                updateResultCount(data.length);
+                displayPoliticians(data.politicians);
+                updateResultCount(data.total_count);
             })
             .catch(error => {
                 console.error('Error:', error);
