@@ -235,3 +235,15 @@ def graph_viewer_politician(politician_id):
     """Graph viewer page for specific politician."""
     politician = Politician.query.filter_by(candidate_id=politician_id).first()
     return render_template('graph_viewer.html', politician=politician)
+
+@app.route('/network')
+def network_viewer():
+    """Serve the working OpenBallot network visualization."""
+    import os
+    demo_path = os.path.join(os.path.dirname(__file__), 'graph', 'openballot_server', 'demo.html')
+    if os.path.exists(demo_path):
+        with open(demo_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return content
+    else:
+        return "Network visualization not found", 404
