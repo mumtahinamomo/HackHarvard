@@ -7,4 +7,4 @@ __pycache__/
 *.pyd
 .Python
 # instance/
-.migrations/
+.migrations/instance/database.db
