@@ -206,3 +206,21 @@ def api_politicians():
         'per_page': per_page,
         'total_pages': (total_count + per_page - 1) // per_page
     })
+
+@app.route('/admin/clear-cache')
+def clear_description_cache():
+    """Admin route to clear all politician description cache."""
+    try:
+        # Update all politicians to have None descriptions
+        Politician.query.update({Politician.description: None})
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': f'Successfully cleared descriptions for {Politician.query.count()} politicians'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False, 
+            'error': str(e)
+        }), 500
