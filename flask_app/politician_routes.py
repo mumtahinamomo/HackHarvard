@@ -324,3 +324,44 @@ def api_politicians():
         'state_counts': [{'state': s[0], 'count': s[1]} for s in state_counts],
         'party_counts': [{'party': p[0], 'count': p[1]} for p in party_counts]
     })
+
+@app.route('/admin/clear-cache')
+def clear_description_cache():
+    """Admin route to clear all politician description cache."""
+    try:
+        # Update all politicians to have None descriptions
+        Politician.query.update({Politician.description: None})
+        db.session.commit()
+        return jsonify({
+            'success': True, 
+            'message': f'Successfully cleared descriptions for {Politician.query.count()} politicians'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False, 
+            'error': str(e)
+        }), 500
+
+@app.route('/graph')
+def graph_viewer():
+    """Graph viewer page without specific politician."""
+    return render_template('graph_viewer.html')
+
+@app.route('/graph/<string:politician_id>')
+def graph_viewer_politician(politician_id):
+    """Graph viewer page for specific politician."""
+    politician = Politician.query.filter_by(candidate_id=politician_id).first()
+    return render_template('graph_viewer.html', politician=politician)
+
+@app.route('/network')
+def network_viewer():
+    """Serve the working OpenBallot network visualization."""
+    import os
+    demo_path = os.path.join(os.path.dirname(__file__), 'graph', 'openballot_server', 'demo.html')
+    if os.path.exists(demo_path):
+        with open(demo_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return content
+    else:
+        return "Network visualization not found", 404

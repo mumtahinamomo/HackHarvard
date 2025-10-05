@@ -20,6 +20,14 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
+# Add CORS headers for API access
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+    return response
+
 # Development settings to prevent browser caching and enable auto-reload
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.config['TEMPLATES_AUTO_RELOAD'] = True

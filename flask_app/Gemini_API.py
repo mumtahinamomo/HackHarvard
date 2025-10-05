@@ -21,12 +21,15 @@ model = genai.GenerativeModel("models/gemini-pro-latest")
 
 def describe_politician(name, website_url=None):
     if website_url:
-        prompt = f"""Provide a 3 bullet point description of the politician {name}, including their background, political career, and notable policies. Use information from their website at {website_url} to provide accurate and up-to-date details about their positions and achievements.  Return ONLY the HTML code with <ul> and <li> tags. Do not include markdown formatting, code blocks, or any other text. Just the raw HTML."""
+        prompt = f"""Provide a 3 bullet point description of the politician {name}, including their background, political career, and notable policies. Use information from their website at {website_url} to provide accurate and up-to-date details about their positions and achievements. 
+
+Return ONLY the HTML code with <ul> and <li> tags. Do not include markdown formatting, code blocks, or any other text. Just the raw HTML."""
     else:
-        prompt = f"""Provide a 3 bullet point description of the politician {name}, including their background, political career, and notable policies.  Return ONLY the HTML code with <ul> and <li> tags. Do not include markdown formatting, code blocks, or any other text. Just the raw HTML."""
+        prompt = f"""Provide a 3 bullet point description of the politician {name}, including their background, political career, and notable policies.
+
+Return ONLY the HTML code with <ul> and <li> tags. Do not include markdown formatting, code blocks, or any other text. Just the raw HTML."""
     
     response = model.generate_content(prompt)
-    # return response.text
     # Clean up the response to remove any markdown formatting
     text = response.text.strip()
     if text.startswith('```html'):
