@@ -36,4 +36,5 @@ class Politician(db.Model):
     funding_group: Mapped[str] = mapped_column(String)
     individual_percentile_all: Mapped[float] = mapped_column(Float)
     individual_percentile_bin: Mapped[str] = mapped_column(String)
+    description: Mapped[str] = mapped_column(String, nullable=True)
 

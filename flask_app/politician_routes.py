@@ -6,12 +6,26 @@ from sqlalchemy import func
 
 from . import app, db
 from .models import Politician
+from .Gemini_API import describe_politician
 
 @app.route('/politician/<string:politician_id>')
 def politician(politician_id):
     print(politician_id)
     politician = Politician.query.filter_by(candidate_id=politician_id).first()
     print(politician)
+    
+    # Generate description if it doesn't exist
+    if politician and not politician.description:
+        try:
+            description = describe_politician(politician.candidate_name, politician.website_url)
+            politician.description = description
+            db.session.commit()
+        except Exception as e:
+            print(f"Error generating description for {politician.candidate_name}: {e}")
+            # Set a default description if Gemini API fails
+            politician.description = f"{politician.candidate_name} is a {politician.political_party_affiliation} politician representing {politician.office_state}."
+            db.session.commit()
+    
     return render_template('politician.html', politician = politician)
 
 @app.route('/search', methods=['POST'])
