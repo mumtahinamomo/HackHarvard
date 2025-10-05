@@ -2,6 +2,7 @@ from flask import redirect, render_template, request, jsonify, url_for
 import pandas as pd
 from fuzzywuzzy import process
 import csv
+from datetime import datetime
 from sqlalchemy import func
 
 from . import app, db
@@ -15,18 +16,43 @@ def politician(politician_id):
     print(politician)
     
     # Generate description if it doesn't exist
-    if politician and not politician.description:
-        try:
-            description = describe_politician(politician.candidate_name, politician.website_url)
-            politician.description = description
-            db.session.commit()
-        except Exception as e:
-            print(f"Error generating description for {politician.candidate_name}: {e}")
-            # Set a default description if Gemini API fails
-            politician.description = f"{politician.candidate_name} is a {politician.political_party_affiliation} politician representing {politician.office_state}."
-            db.session.commit()
+    # if politician and not politician.description:
+        
+    #     try:
+    #         description = describe_politician(politician.candidate_name, politician.website_url)
+    #         politician.description = description
+    #         db.session.commit()
+    #     except Exception as e:
+    #         print(f"Error generating description for {politician.candidate_name}: {e}")
+    #         # Set a default description if Gemini API fails
+    #         politician.description = f"{politician.candidate_name} is a {politician.political_party_affiliation} politician representing {politician.office_state}."
+    #         db.session.commit()
     
     return render_template('politician.html', politician = politician)
+
+@app.route('/generate_description/<string:politician_id>')
+def generate_description(politician_id):
+    try:
+        politician = Politician.query.filter_by(candidate_id=politician_id).first()
+        if not politician:
+            return jsonify({'error': 'Politician not found'}), 404
+        
+        # Generate description using Gemini API
+        description = describe_politician(politician.candidate_name, politician.website_url)
+        
+        # Save description to database
+        politician.description = description
+        politician.description_generated_at = datetime.now()
+        db.session.commit()
+        
+        return jsonify({
+            'description': description,
+            'generated_at': politician.description_generated_at
+        })
+        
+    except Exception as e:
+        print(f"Error generating description for {politician_id}: {e}")
+        return jsonify({'error': 'Failed to generate description'}), 500
 
 @app.route('/search', methods=['POST'])
 def search():
@@ -119,9 +145,34 @@ def list_politicians():
     
     politicians = query.all()
     
-    # Get unique values for filter options
-    all_chambers = [p.chamber for p in Politician.query.with_entities(Politician.chamber).distinct().all() if p.chamber]
-    all_states = [p.office_state for p in Politician.query.with_entities(Politician.office_state).distinct().all() if p.office_state and p.office_state != '00']
+    # Get chambers with counts
+    chamber_counts = db.session.query(
+        Politician.chamber,
+        func.count(Politician.id).label('count')
+    ).filter(
+        Politician.chamber.isnot(None)
+    ).group_by(
+        Politician.chamber
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
+    all_chambers = [chamber[0] for chamber in chamber_counts]
+    
+    # Get states with counts
+    state_counts = db.session.query(
+        Politician.office_state,
+        func.count(Politician.id).label('count')
+    ).filter(
+        Politician.office_state.isnot(None),
+        Politician.office_state != '00'
+    ).group_by(
+        Politician.office_state
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
+    all_states = [state[0] for state in state_counts]
     
     # Get parties sorted by number of candidates (most to least)
     party_counts = db.session.query(
@@ -143,9 +194,11 @@ def list_politicians():
                          selected_chambers=chambers,
                          selected_states=states,
                          selected_parties=parties,
-                         all_chambers=sorted(all_chambers),
-                         all_states=sorted(all_states),
+                         all_chambers=all_chambers,
+                         all_states=all_states,
                          all_parties=all_parties,
+                         chamber_counts=chamber_counts,
+                         state_counts=state_counts,
                          party_counts=party_counts)
 
 @app.route('/api/politicians')
@@ -181,6 +234,68 @@ def api_politicians():
     # Get total count for pagination
     total_count = query.count()
     
+    # Get live counts for each filter category (based on current search + other filters)
+    # Chamber counts (excluding chamber filter to show remaining options)
+    chamber_query = Politician.query
+    if search_term:
+        chamber_query = chamber_query.filter(Politician.candidate_name.ilike(f'%{search_term}%'))
+    if states:
+        chamber_query = chamber_query.filter(Politician.office_state.in_(states))
+    if parties:
+        chamber_query = chamber_query.filter(Politician.political_party_affiliation.in_(parties))
+    
+    chamber_counts = chamber_query.filter(
+        Politician.chamber.isnot(None)
+    ).with_entities(
+        Politician.chamber,
+        func.count(Politician.id).label('count')
+    ).group_by(
+        Politician.chamber
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
+    # State counts (excluding state filter to show remaining options)
+    state_query = Politician.query
+    if search_term:
+        state_query = state_query.filter(Politician.candidate_name.ilike(f'%{search_term}%'))
+    if chambers:
+        state_query = state_query.filter(Politician.chamber.in_(chambers))
+    if parties:
+        state_query = state_query.filter(Politician.political_party_affiliation.in_(parties))
+    
+    state_counts = state_query.filter(
+        Politician.office_state.isnot(None),
+        Politician.office_state != '00'
+    ).with_entities(
+        Politician.office_state,
+        func.count(Politician.id).label('count')
+    ).group_by(
+        Politician.office_state
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
+    # Party counts (excluding party filter to show remaining options)
+    party_query = Politician.query
+    if search_term:
+        party_query = party_query.filter(Politician.candidate_name.ilike(f'%{search_term}%'))
+    if chambers:
+        party_query = party_query.filter(Politician.chamber.in_(chambers))
+    if states:
+        party_query = party_query.filter(Politician.office_state.in_(states))
+    
+    party_counts = party_query.filter(
+        Politician.political_party_affiliation.isnot(None)
+    ).with_entities(
+        Politician.political_party_affiliation,
+        func.count(Politician.id).label('count')
+    ).group_by(
+        Politician.political_party_affiliation
+    ).order_by(
+        func.count(Politician.id).desc()
+    ).all()
+    
     # Apply pagination
     politicians = query.offset((page - 1) * per_page).limit(per_page).all()
     
@@ -204,5 +319,8 @@ def api_politicians():
         'total_count': total_count,
         'page': page,
         'per_page': per_page,
-        'total_pages': (total_count + per_page - 1) // per_page
+        'total_pages': (total_count + per_page - 1) // per_page,
+        'chamber_counts': [{'chamber': c[0], 'count': c[1]} for c in chamber_counts],
+        'state_counts': [{'state': s[0], 'count': s[1]} for s in state_counts],
+        'party_counts': [{'party': p[0], 'count': p[1]} for p in party_counts]
     })

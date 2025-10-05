@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, ForeignKey, Float, Date
+from sqlalchemy import Integer, String, ForeignKey, Float, Date, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from . import db
@@ -36,5 +36,6 @@ class Politician(db.Model):
     funding_group: Mapped[str] = mapped_column(String)
     individual_percentile_all: Mapped[float] = mapped_column(Float)
     individual_percentile_bin: Mapped[str] = mapped_column(String)
+    description_generated_at: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     description: Mapped[str] = mapped_column(String, nullable=True)
 

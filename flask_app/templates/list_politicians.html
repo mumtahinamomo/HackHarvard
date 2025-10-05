@@ -45,6 +45,7 @@
                                    {% if chamber in selected_chambers %}checked{% endif %}>
                             <label class="form-check-label" for="chamber-{{ chamber }}">
                                 {{ chamber }}
+                                <small class="text-muted">({{ chamber_counts[loop.index0][1] }})</small>
                             </label>
                         </div>
                         {% endfor %}
@@ -66,6 +67,7 @@
                                    {% if state in selected_states %}checked{% endif %}>
                             <label class="form-check-label" for="state-{{ state }}">
                                 {{ state }}
+                                <small class="text-muted">({{ state_counts[loop.index0][1] }})</small>
                             </label>
                         </div>
                         {% endfor %}
@@ -241,6 +243,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 displayPoliticians(data.politicians);
                 updateResultCount(data.total_count);
+                updateFilterCounts(data.chamber_counts, data.state_counts, data.party_counts);
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -249,6 +252,42 @@ document.addEventListener('DOMContentLoaded', function() {
             .finally(() => {
                 loadingSpinner.classList.add('d-none');
             });
+    }
+
+    // Update filter counts based on current search and filters
+    function updateFilterCounts(chamberCounts, stateCounts, partyCounts) {
+        // Update chamber counts
+        const chamberCheckboxes = document.querySelectorAll('.chamber-filter');
+        chamberCheckboxes.forEach((checkbox, index) => {
+            if (checkbox.id === 'chamber-all') return; // Skip "All Chambers" checkbox
+            const label = checkbox.nextElementSibling;
+            const countElement = label.querySelector('small');
+            if (countElement && chamberCounts[index - 1]) {
+                countElement.textContent = `(${chamberCounts[index - 1].count})`;
+            }
+        });
+
+        // Update state counts
+        const stateCheckboxes = document.querySelectorAll('.state-filter');
+        stateCheckboxes.forEach((checkbox, index) => {
+            if (checkbox.id === 'state-all') return; // Skip "All States" checkbox
+            const label = checkbox.nextElementSibling;
+            const countElement = label.querySelector('small');
+            if (countElement && stateCounts[index - 1]) {
+                countElement.textContent = `(${stateCounts[index - 1].count})`;
+            }
+        });
+
+        // Update party counts
+        const partyCheckboxes = document.querySelectorAll('.party-filter');
+        partyCheckboxes.forEach((checkbox, index) => {
+            if (checkbox.id === 'party-all') return; // Skip "All Parties" checkbox
+            const label = checkbox.nextElementSibling;
+            const countElement = label.querySelector('small');
+            if (countElement && partyCounts[index - 1]) {
+                countElement.textContent = `(${partyCounts[index - 1].count})`;
+            }
+        });
     }
 
     // Display politicians in the current view

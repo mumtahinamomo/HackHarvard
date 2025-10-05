@@ -12,8 +12,9 @@
             <div class="col-12">
                 <div class="card shadow">
                     <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
+                        <div class="row">
+                            <!-- Left Half: Basic Info -->
+                            <div class="col-md-6">
                                 <h1 class="card-title mb-2">{{ politician.candidate_name }}</h1>
                                 <div class="mb-3">
                                     <span class="badge 
@@ -31,7 +32,7 @@
                                     </span>
                                 </div>
                                 
-                                <p class="text-muted mb-0">
+                                <p class="text-muted mb-3">
                                     <i class="bi bi-geo-alt"></i> 
                                     {{ politician.office_state }}
                                     {% if politician.office_district and politician.office_district != '0.0' %}
@@ -39,10 +40,11 @@
                                     {% endif %}
                                 </p>
                                 
-                                {% if politician.description %}
-                                <div class="mt-3">
-                                    <h6 class="mb-2">About {{ politician.candidate_name.split(',')[1].strip() if ',' in politician.candidate_name else politician.candidate_name.split()[0] }}</h6>
-                                    <p class="text-muted">{{ politician.description }}</p>
+                                {% if politician.website_url %}
+                                <div class="mb-3">
+                                    <a href="{{ politician.website_url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-globe me-1"></i> Visit Website
+                                    </a>
                                 </div>
                                 {% endif %}
                                 
@@ -53,14 +55,40 @@
                                 </p>
                                 {% endif %} -->
                             </div>
-                            <div class="col-md-4 text-md-end">
-                                <div class="text-muted">
-                                    {% if politician.website_url %}
-                                    <a href="{{ politician.website_url }}" target="_blank">
-                                        <i class="bi bi-globe"></i> Website
-                                    </a>
+                            
+                            <!-- Right Half: Description -->
+                            <div class="col-md-6">
+                                <div id="description-section">
+                                    <h6 class="mb-3">About {{ politician.candidate_name.split(',')[1].strip() if ',' in politician.candidate_name else politician.candidate_name.split()[0] }}</h6>
+                                    
+                                    <div id="description-content" class="mb-3">
+                                        {% if politician.description %}
+                                            <p class="text-muted">{{ politician.description | safe }}</p>
+                                        {% else %}
+                                            <div class="d-flex align-items-center">
+                                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <span class="text-muted">Generating description...</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Regenerate Button -->
+                                    <div class="mb-2">
+                                        <button type="button" class="btn btn-outline-primary btn-sm" id="regenerate-description-btn" 
+                                                {% if not politician.description %}style="display: none;"{% endif %}>
+                                            <i class="bi bi-arrow-clockwise me-1"></i>Regenerate
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Timestamp -->
+                                    {% if politician.description and politician.description_generated_at %}
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock me-1"></i>
+                                        Generated on {{ politician.description_generated_at.strftime('%B %d, %Y at %I:%M %p') }}
+                                    </small>
                                     {% endif %}
-                                    <!-- <small>Candidate ID: {{ politician.candidate_id }}</small> -->
                                 </div>
                             </div>
                         </div>
@@ -322,4 +350,112 @@
     background-color: #0d6efd !important;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if politician has a description
+    const descriptionContent = document.getElementById('description-content');
+    const hasDescription = descriptionContent.querySelector('p');
+    const regenerateBtn = document.getElementById('regenerate-description-btn');
+    
+    // If no description exists, generate one
+    if (!hasDescription) {
+        generateDescription();
+    }
+    
+    // Add event listener for regenerate button
+    if (regenerateBtn) {
+        regenerateBtn.addEventListener('click', function() {
+            // Disable button and show loading state
+            this.disabled = true;
+            this.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Regenerating...';
+            generateDescription();
+        });
+    }
+    
+    function generateDescription() {
+        const politicianId = '{{ politician.candidate_id }}';
+        const loadingHtml = `
+            <div class="d-flex align-items-center">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="text-muted">Generating description...</span>
+            </div>
+        `;
+        
+        // Show loading state
+        descriptionContent.innerHTML = loadingHtml;
+        
+        // Call the API to generate description
+        fetch(`/generate_description/${politicianId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                // Update the description content with timestamp
+                const generatedDate = new Date(data.generated_at);
+                const timestamp = generatedDate.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                descriptionContent.innerHTML = `<p class="text-muted">${data.description}</p>`;
+                
+                // Show regenerate button
+                if (regenerateBtn) {
+                    regenerateBtn.style.display = 'inline-block';
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Regenerate';
+                }
+                
+                // Update timestamp (find the timestamp element after the regenerate button)
+                const timestampElement = document.querySelector('#description-section small');
+                if (timestampElement) {
+                    timestampElement.innerHTML = `
+                        <i class="bi bi-clock me-1"></i>
+                        Generated on ${timestamp}
+                    `;
+                } else {
+                    // Create timestamp element if it doesn't exist
+                    const timestampDiv = document.createElement('small');
+                    timestampDiv.className = 'text-muted';
+                    timestampDiv.innerHTML = `
+                        <i class="bi bi-clock me-1"></i>
+                        Generated on ${timestamp}
+                    `;
+                    // Insert after the regenerate button
+                    const regenerateDiv = regenerateBtn.parentElement;
+                    regenerateDiv.parentElement.appendChild(timestampDiv);
+                }
+            })
+            .catch(error => {
+                console.error('Error generating description:', error);
+                // Show error message
+                descriptionContent.innerHTML = `
+                    <p class="text-muted">
+                        <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+                        Unable to generate description at this time. Please try again later.
+                    </p>
+                `;
+                
+                // Re-enable regenerate button
+                if (regenerateBtn) {
+                    regenerateBtn.disabled = false;
+                    regenerateBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Regenerate';
+                }
+            });
+    }
+});
+</script>
 {% endblock %}
